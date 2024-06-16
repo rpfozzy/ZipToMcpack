@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Конвертер .zip в .mcpack (с модификациями)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        h2 {
+    color: #555;
+    text-align: center; /* Добавляем центрирование текста */
+        }
+        input[type="file"] {
+            margin: 20px 0;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            background-color: #fff;
+            cursor: pointer;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #conversionProgress {
+            margin-top: 20px;
+        }
+        #progressBar {
+            width: 100%;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #progressLabel {
+            margin-top: 10px;
+            display: block;
+            text-align: center;
+            font-weight: bold;
+        }
+        #conversionResult {
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h2>Загрузите ваш .zip файл для конвертации в .mcpack</h2>
+    
+    <input type="file" id="zipFileInput" accept=".zip" required>
+    <button id="convertButton">Загрузить и конвертировать</button>
+
+    <div id="conversionProgress" style="display:none;">
+        <progress id="progressBar" value="0" max="100"></progress>
+        <span id="progressLabel">0%</span>
+    </div>
+
+    <div id="conversionResult" style="display:none;">
+        <h3>Результат конвертации</h3>
+        <p>Файл успешно конвертирован в .mcpack.</p>
+        <button id="convertNewButton">Конвертировать новый файл</button>
+        <script>
+        	document.getElementById('convertNewButton').addEventListener('click', function() {
+    // Скрыть результаты предыдущей конвертации
+    document.getElementById('conversionResult').style.display = 'none';
+    // Сбросить значение в поле input для загрузки файла
+    document.getElementById('zipFileInput').value = '';
+});
+</script>
+
+    <script>
+        document.getElementById('convertButton').addEventListener('click', function() {
+            let fileInput = document.getElementById('zipFileInput');
+            if (fileInput.files.length === 0) {
+                alert('Пожалуйста, выберите .zip файл для конвертации.');
+                return;
+            }
+
+            let zipFile = fileInput.files[0];
+            let zip = new JSZip();
+
+            zip.loadAsync(zipFile)
+            .then(function(zip) {
+                if (zip.file('credits.txt')) {
+                    zip.remove('credits.txt');
+                }
+
+                if (zip.file('pack.png')) {
+                    let packPng = zip.file('pack.png').async('uint8array');
+                    zip.remove('pack.png');
+                    zip.file('pack_icon.png', packPng);
+                }
+
+                if (zip.folder('assets/minecraft/textures')) {
+                    let texturesFolder = zip.folder('assets/minecraft/textures');
+                    texturesFolder.forEach(function (relativePath, file) {
+                        zip.file(`textures/${relativePath}`, file.async('uint8array'));
+                    });
+                    zip.remove('assets');
+                }
+
+                let texturesBlocksFolder = zip.folder('textures/blocks');
+                let texturesEnvironmentFolder = zip.folder('textures/environment') || zip.folder('textures').folder('environment');
+
+                if (texturesBlocksFolder) {
+                    let destroyStageFiles = [
+                        'destroy_stage_0.png', 'destroy_stage_1.png', 'destroy_stage_2.png',
+                        'destroy_stage_3.png', 'destroy_stage_4.png', 'destroy_stage_5.png',
+                        'destroy_stage_6.png', 'destroy_stage_7.png', 'destroy_stage_8.png',
+                        'destroy_stage_9.png'
+                    ];
+
+                    destroyStageFiles.forEach(function(fileName) {
+                        if (texturesBlocksFolder.file(fileName)) {
+                            let file = texturesBlocksFolder.file(fileName).async('uint8array');
+                            zip.remove(`textures/blocks/${fileName}`);
+                            zip.file(`textures/environment/${fileName}`, file);
+                        }
+                    });
+
+                    let fireLayer0 = texturesBlocksFolder.file('fire_layer_0.png');
+                    let fireLayer1 = texturesBlocksFolder.file('fire_layer_1.png');
+
+                    if (fireLayer0 || fireLayer1) {
+                        let chosenFile;
+                        if (fireLayer0) {
+                            chosenFile = fireLayer0.async('uint8array');
+                            zip.remove('textures/blocks/fire_layer_0.png');
+                        } else if (fireLayer1) {
+                            chosenFile = fireLayer1.async('uint8array');
+                            zip.remove('textures/blocks/fire_layer_1.png');
+                        }
+
+                        if (chosenFile) {
+                            zip.file('textures/flame_atlas.png', chosenFile);
+                        }
+
+                        if (fireLayer0 && fireLayer1) {
+                            zip.remove('textures/blocks/fire_layer_1.png');
+                        }
+                    }
+
+                    texturesBlocksFolder.forEach(function(relativePath, file) {
+                        if (!relativePath.endsWith('.png')) {
+                            zip.remove(`textures/blocks/${relativePath}`);
+                        }
+                    });
+                }
+
+                let texturesItemsFolder = zip.folder('textures/items');
+                if (texturesItemsFolder) {
+                    texturesItemsFolder.forEach(function(relativePath, file) {
+                        if (!relativePath.endsWith('.png')) {
+                            zip.remove(`textures/items/${relativePath}`);
+                        }
+                    });
+                }
+
+                let armorModelsFolder = zip.folder('textures/models/armor');
+                if (armorModelsFolder) {
+                    let renameMap = {
+                        'chainmail_layer_1.png': 'chain_1.png',
+                        'chainmail_layer_2.png': 'chain_2.png',
+                        'diamond_layer_1.png': 'diamond_1.png',
+                        'diamond_layer_2.png': 'diamond_2.png',
+                        'iron_layer_1.png': 'iron_1.png',
+                        'iron_layer_2.png': 'iron_2.png',
+                        'gold_layer_1.png': 'gold_1.png',
+                        'gold_layer_2.png': 'gold_2.png',
+                        'leather_layer_1.png': 'cloth_1.png',
+                        'leather_layer_2.png': 'cloth_2.png'
+                    };
+
+                    armorModelsFolder.forEach(function(relativePath, file) {
+                        if (relativePath.startsWith('chainmail_layer') ||
+                            relativePath.startsWith('diamond_layer') ||
+                            relativePath.startsWith('iron_layer') ||
+                            relativePath.startsWith('gold_layer') ||
+                            relativePath.startsWith('leather_layer')) {
+                            
+                            let newFileName = renameMap[relativePath];
+                            if (newFileName) {
+                                let fileContent = file.async('uint8array');
+                                zip.remove(`textures/models/armor/${relativePath}`);
+                                zip.file(`textures/models/armor/${newFileName}`, fileContent);
+                            }
+                        } else {
+                            zip.remove(`textures/models/armor/${relativePath}`);
+                        }
+                    });
+
+                    if (armorModelsFolder.file('leather_layer_1_overlay.png')) {
+                        zip.remove('textures/models/armor/leather_layer_1_overlay.png');
+                    }
+                    if (armorModelsFolder.file('leather_layer_2_overlay.png')) {
+                        zip.remove('textures/models/armor/leather_layer_2_overlay.png');
+                    }
+                }
+
+                let modelsFolder = zip.folder('textures/models');
+                if (modelsFolder) {
+                    modelsFolder.forEach(function(relativePath, file) {
+                        if (!relativePath.startsWith('armor')) {
+                            zip.remove(`textures/models/${relativePath}`);
+                        }
+                    });
+                }
+
+                // Удаление всех папок font
+                if (zip.folder('textures/font')) {
+                    zip.remove('textures/font');
+                }
+                if (zip.folder('font')) {
+                    zip.remove('font');
+                }
+
+                let chestFolder = zip.folder('textures/entity/chest');
+                if (chestFolder) {
+                    let chestRenameMap = {
+                        'normal_double.png': 'double_normal.png'
+                    };
+
+                    chestFolder.forEach(function(relativePath, file) {
+                        if (chestRenameMap[relativePath]) {
+                            let newFileName = chestRenameMap[relativePath];
+                            let fileContent = file.async('uint8array');
+                            zip.remove(`textures/entity/chest/${relativePath}`);
+                            zip.file(`textures/entity/chest/${newFileName}`, fileContent);
+                        }
+                    });
+                }
+
+                if (zip.file('pack.mcmeta')) {
+                    let mcmeta = zip.file('pack.mcmeta');
+                    let uuid1 = generateUUID();
+                    let uuid2 = generateUUID();
+
+                    let newContent = `{
+           "format_version" : 1,
+           "header" : {
+              "description" : "creator of thefozzy project",
+              "name" : "§f§l§oCONVERT ZIP TO MCPACK",
+              "uuid" : "${uuid1}",
+              "version" : [ 3, 0, 0 ]
+           },
+           "modules" : [
+              {
+                 "description" : "",
+                 "type" : "resources",
+                 "uuid" : "${uuid2}",
+                 "version" : [ 1, 0, 0 ]
+              }
+           ]
+        }`;
+
+                    zip.remove('pack.mcmeta');
+                    zip.file('manifest.json', newContent);
+
+                    function generateUUID() {
+                        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                            let r = Math.random() * 16 | 0,
+                                v = c == 'x' ? r : (r & 0x3 | 0x8);
+                            return v.toString(16);
+                        });
+                    }
+                }
+
+                return zip.generateAsync({type: 'blob'}, function updateCallback(metadata) {
+                    let percent = metadata.percent.toFixed(2);
+                    document.getElementById('conversionProgress').style.display = 'block';
+                    document.getElementById('progressBar').value = percent;
+                    document.getElementById('progressLabel').textContent = percent + '%';
+                });
+            })
+            .then(function(blob) {
+                // Создаем имя файла с припиской "converted"
+                let originalFileName = zipFile.name.replace(/\.zip$/, '');
+                let newFileName = originalFileName + '-converted.mcpack';
+
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = newFileName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.getElementById('conversionProgress').style.display = 'none';
+                document.getElementById('conversionResult').style.display = 'block';
+            })
+            .catch(function(error) {
+                console.error('Произошла ошибка при конвертации:', error);
+            });
+        });
+    </script>
+</body>
+</html>
