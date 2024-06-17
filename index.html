@@ -96,6 +96,16 @@
 </script>
 
 <script>
+    document.getElementById('convertNewButton').addEventListener('click', function() {
+        // Скрыть результаты предыдущей конвертации
+        document.getElementById('conversionResult').style.display = 'none';
+        // Сбросить значение в поле input для загрузки файла
+        document.getElementById('zipFileInput').value = '';
+    });
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.5.0/jszip.min.js"></script>
+<script>
     document.getElementById('convertButton').addEventListener('click', function() {
         let fileInput = document.getElementById('zipFileInput');
         if (fileInput.files.length === 0) {
@@ -108,31 +118,56 @@
 
         zip.loadAsync(zipFile)
         .then(function(zip) {
+            // Удаление файла credits.txt
             if (zip.file('credits.txt')) {
                 zip.remove('credits.txt');
             }
 
+            // Переименование файла pack.png в pack_icon.png
             if (zip.file('pack.png')) {
                 let packPng = zip.file('pack.png').async('uint8array');
                 zip.remove('pack.png');
                 zip.file('pack_icon.png', packPng);
             }
 
+            // Перемещение папки textures
             if (zip.folder('assets/minecraft/textures')) {
                 let texturesFolder = zip.folder('assets/minecraft/textures');
                 texturesFolder.forEach(function (relativePath, file) {
                     zip.file(`textures/${relativePath}`, file.async('uint8array'));
                 });
+                zip.remove('assets/minecraft/textures');
+            }
+
+            // Перемещение папки sounds
+            if (zip.folder('assets/minecraft/sounds')) {
+                let soundsFolder = zip.folder('assets/minecraft/sounds');
+                soundsFolder.forEach(function(relativePath, file) {
+                    zip.file(`sounds/${relativePath}`, file.async('uint8array'));
+                });
+                zip.remove('assets/minecraft/sounds');
+            }
+
+            // Проверка на наличие папки assets и удаление, если она больше не нужна
+            if (zip.folder('assets')) {
                 zip.remove('assets');
             }
 
-            if (zip.folder('assets/minecraft/sound')) {
-                let soundFolder = zip.folder('assets/minecraft/sound');
-                soundFolder.forEach(function (relativePath, file) {
-                    zip.file(`sound/${relativePath}`, file.async('uint8array'));
+            // Проверка на наличие папки textures/block в .mcpack и перемещение файлов
+            if (zip.folder('textures/block')) {
+                let blockFolder = zip.folder('textures/block');
+                blockFolder.forEach(function(relativePath, file) {
+                    zip.file(`textures/blocks/${relativePath}`, file.async('uint8array'));
                 });
+                zip.remove('textures/block');
             }
 
+            // Удаление папки block из textures, если она больше не нужна
+            if (zip.folder('textures/block')) {
+                zip.remove('textures/block');
+            }
+
+            // Обработка текстурных файлов
             let texturesBlocksFolder = zip.folder('textures/blocks');
             let texturesEnvironmentFolder = zip.folder('textures/environment') || zip.folder('textures').folder('environment');
 
@@ -211,7 +246,7 @@
                         relativePath.startsWith('iron_layer') ||
                         relativePath.startsWith('gold_layer') ||
                         relativePath.startsWith('leather_layer')) {
-
+                        
                         let newFileName = renameMap[relativePath];
                         if (newFileName) {
                             let fileContent = file.async('uint8array');
@@ -270,22 +305,22 @@
                 let uuid2 = generateUUID();
 
                 let newContent = `{
-                    "format_version" : 1,
-                    "header" : {
-                        "description" : "creator of thefozzy project",
-                        "name" : "§f§l§oCONVERT ZIP TO MCPACK",
-                        "uuid" : "${uuid1}",
-                        "version" : [ 3, 0, 0 ]
-                    },
-                    "modules" : [
-                        {
-                            "description" : "",
-                            "type" : "resources",
-                            "uuid" : "${uuid2}",
-                            "version" : [ 1, 0, 0 ]
-                        }
-                    ]
-                }`;
+       "format_version" : 1,
+       "header" : {
+          "description" : "creator of thefozzy project",
+          "name" : "§f§l§oCONVERT ZIP TO MCPACK",
+          "uuid" : "${uuid1}",
+          "version" : [ 3, 0, 0 ]
+       },
+       "modules" : [
+          {
+             "description" : "",
+             "type" : "resources",
+             "uuid" : "${uuid2}",
+             "version" : [ 1, 0, 0 ]
+          }
+       ]
+    }`;
 
                 zip.remove('pack.mcmeta');
                 zip.file('manifest.json', newContent);
@@ -319,6 +354,7 @@
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
+            document.getElementById('conversionProgress').style.display = 'none';
             document.getElementById('conversionResult').style.display = 'block';
         })
         .catch(function(error) {
