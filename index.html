@@ -3,6 +3,194 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stylish Image Buttons with Modals</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        .image-button {
+            position: fixed;
+            width: 55px;
+            height: 55px;
+            border-radius: 15px;
+            background-color: #2c3e50;
+            background-image: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            background-size: 70%;
+            background-position: center;
+            background-repeat: no-repeat;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            outline: none;
+            overflow: hidden;
+        }
+
+        #openModal {
+            bottom: 20px;
+            right: 20px;
+        }
+
+        #openIndex {
+            bottom: 20px;
+            left: 20px;
+        }
+
+        .image-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+            z-index: 1;
+            border-radius: 15px;
+        }
+
+        .image-button::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            background-size: 70%;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: 2;
+            border-radius: 13px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+        }
+
+        #openModal::after {
+            background-image: url('https://img.icons8.com/?size=100&id=DCo2d3T0astT&format=png&color=000000');
+        }
+
+        #openIndex::after {
+            background-image: url('https://img.icons8.com/?size=100&id=37794&format=png&color=000000');
+        }
+
+        .image-button:hover {
+            transform: scale(1.05) translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .image-button:active {
+            transform: scale(0.98) translateY(0);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            width: 90%;
+            height: 90%;
+            border-radius: 20px;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            color: #007AFF;
+            font-size: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1001;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <button class="image-button" id="openModal"></button>
+    <button class="image-button" id="openIndex"></button>
+
+    <div id="modalSplitter" class="modal">
+        <div class="modal-content animate__animated animate__fadeInUp">
+            <span class="close-button" id="closeModalSplitter">&times;</span>
+            <iframe src="https://rpfozzy.github.io/ImageSplitter/" title="Image Splitter"></iframe>
+        </div>
+    </div>
+
+    <div id="modalIndex" class="modal">
+        <div class="modal-content animate__animated animate__fadeInUp">
+            <span class="close-button" id="closeModalIndex">&times;</span>
+            <iframe src="https://rpfozzy.github.io/totem128x/" title="TOTEM128X"></iframe>
+        </div>
+    </div>
+
+    <script>
+        const openModalBtn = document.getElementById('openModal');
+        const openIndexBtn = document.getElementById('openIndex');
+        const closeModalSplitterBtn = document.getElementById('closeModalSplitter');
+        const closeModalIndexBtn = document.getElementById('closeModalIndex');
+        const modalSplitter = document.getElementById('modalSplitter');
+        const modalIndex = document.getElementById('modalIndex');
+        const modalContentSplitter = modalSplitter.querySelector('.modal-content');
+        const modalContentIndex = modalIndex.querySelector('.modal-content');
+
+        function openModal(modal, content) {
+            modal.style.display = 'block';
+            content.classList.remove('animate__fadeOutDown');
+            content.classList.add('animate__fadeInUp');
+        }
+
+        function closeModal(modal, content) {
+            content.classList.remove('animate__fadeInUp');
+            content.classList.add('animate__fadeOutDown');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 500);
+        }
+
+        openModalBtn.addEventListener('click', () => openModal(modalSplitter, modalContentSplitter));
+        openIndexBtn.addEventListener('click', () => openModal(modalIndex, modalContentIndex));
+
+        closeModalSplitterBtn.addEventListener('click', () => closeModal(modalSplitter, modalContentSplitter));
+        closeModalIndexBtn.addEventListener('click', () => closeModal(modalIndex, modalContentIndex));
+
+        window.addEventListener('click', (event) => {
+            if (event.target === modalSplitter) {
+                closeModal(modalSplitter, modalContentSplitter);
+            }
+            if (event.target === modalIndex) {
+                closeModal(modalIndex, modalContentIndex);
+            }
+        });
+    </script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Конвертер .zip в .mcpack (с модификациями)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
     <style>
